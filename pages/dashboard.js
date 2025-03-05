@@ -169,7 +169,7 @@ export default function Dashboard({ session }) {
           <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-12">
             <div className="relative p-6 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-xl hover:shadow-2xl hover:scale-105 transition duration-500 transform -skew-y-3 border-2 border-blue-400">
               <Image 
-                src="/images/dicas/Corte o Blá-blá-blá!.jpg" 
+                src="/images/dicas/Corte o Bla-bla-bla!.jpg" 
                 alt="Corte o Blá-blá-blá!" 
                 width={200} 
                 height={300} 
@@ -193,7 +193,7 @@ export default function Dashboard({ session }) {
             </div>
             <div className="relative p-6 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl shadow-xl hover:shadow-2xl hover:scale-105 transition duration-500 transform -skew-y-3 border-2 border-orange-400">
               <Image 
-                src="/images/dicas/Toque o Coração!.jpg" 
+                src="/images/dicas/Toque o Coracao!.jpg" 
                 alt="Toque o Coração!" 
                 width={200} 
                 height={300} 
@@ -207,7 +207,7 @@ export default function Dashboard({ session }) {
         </section>
 
         <section id="planos" className="py-16 px-8 bg-gradient-to-r from-gray-50 to-gray-100">
-          <h2 className="text-4xl font-bold text-center text-blue-600 mb-12">Escolha Seu Plano e Crie Sem Limites!</h2>
+          <h2 className="text-4xl font-bold text-center text-blue-600 mb-MIS12">Escolha Seu Plano e Crie Sem Limites!</h2>
           <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="p-8 bg-gradient-to-b from-white to-gray-100 rounded-xl shadow-xl hover:shadow-2xl hover:scale-105 transition duration-300 border-t-4 border-green-500">
               <h4 className="text-2xl font-semibold text-blue-500">Grátis</h4>
