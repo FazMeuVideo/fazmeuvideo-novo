@@ -3,8 +3,9 @@ const path = require('path');
 const fs = require('fs');
 const gTTS = require('gtts');
 const axios = require('axios');
+const ffmpegPath = require('ffmpeg-static');
 
-ffmpeg.setFfmpegPath('C:\\ffmpeg\\bin\\ffmpeg.exe');
+ffmpeg.setFfmpegPath(ffmpegPath);
 
 const unsplashKeys = [
   'EKBsegKoSBQZFj-7zjv5Qdlx-5qDoovZQ-Ryq7pP9Jg',
@@ -132,7 +133,7 @@ export default async function handler(req, res) {
         await new Promise((resolve, reject) => {
           ffmpeg()
             .input(tempImagePath)
-            .inputOptions(['-framerate 25', '-loop 1']) // Loop pra imagem estática
+            .inputOptions(['-framerate 25', '-loop 1'])
             .input(tempAudioPath)
             .videoCodec('libx264')
             .audioCodec('aac')
