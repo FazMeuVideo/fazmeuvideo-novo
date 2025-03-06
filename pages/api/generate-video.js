@@ -1,7 +1,6 @@
 const ffmpeg = require('fluent-ffmpeg');
 const path = require('path');
 const fs = require('fs');
-const gTTS = require('gtts');
 const axios = require('axios');
 const ffmpegPath = require('ffmpeg-static');
 
@@ -56,30 +55,46 @@ async function fetchImage(query) {
 }
 
 async function generateNarration(text, outputPath, duration = null) {
-  return new Promise((resolve, reject) => {
-    const tempPath = outputPath.replace('.mp3', '_temp.mp3');
-    const gtts = new gTTS(text, 'pt');
-    gtts.save(tempPath, (err) => {
-      if (err) {
-        console.error('Erro ao gerar áudio com gTTS:', err);
-        reject(err);
-      } else {
-        console.log(`Áudio temporário gerado: ${tempPath}`);
-        ffmpeg(tempPath)
-          .outputOptions('-c:a mp3')
-          .duration(duration || 9999)
-          .save(outputPath)
-          .on('end', () => {
-            console.log(`Áudio final gerado: ${outputPath}`);
-            fs.unlinkSync(tempPath);
-            resolve();
-          })
-          .on('error', (err) => {
-            console.error('Erro ao converter áudio com FFmpeg:', err);
-            reject(err);
-          });
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  const voiceId = '21m00Tcm4TlvDq8ikWAM'; // Voz padrão "Rachel", ajustável no ElevenLabs
+
+  const response = await axios.post(
+    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+    {
+      text: text,
+      model_id: 'eleven_monolingual_v1',
+      voice_settings: {
+        stability: 0.5,
+        similarity_boost: 0.5
       }
-    });
+    },
+    {
+      headers: {
+        'xi-api-key': apiKey,
+        'Content-Type': 'application/json'
+      },
+      responseType: 'arraybuffer'
+    }
+  );
+
+  const tempPath = outputPath.replace('.mp3', '_temp.mp3');
+  fs.writeFileSync(tempPath, Buffer.from(response.data));
+  console.log(`Áudio temporário gerado: ${tempPath}`);
+
+  return new Promise((resolve, reject) => {
+    ffmpeg(tempPath)
+      .outputOptions('-c:a mp3')
+      .duration(duration || 9999)
+      .save(outputPath)
+      .on('end', () => {
+        console.log(`Áudio final gerado: ${outputPath}`);
+        fs.unlinkSync(tempPath);
+        resolve();
+      })
+      .on('error', (err) => {
+        console.error('Erro ao converter áudio com FFmpeg:', err);
+        reject(err);
+      });
   });
 }
 
