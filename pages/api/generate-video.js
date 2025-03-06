@@ -54,9 +54,8 @@ async function fetchImage(query) {
   }
 }
 
-async function generateNarration(text, outputPath, duration = null) {
+async function generateNarration(text, outputPath, voiceId, duration = null) {
   const apiKey = process.env.ELEVENLABS_API_KEY;
-  const voiceId = '21m00Tcm4TlvDq8ikWAM'; // Voz padrão "Rachel", ajustável no ElevenLabs
 
   const response = await axios.post(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
@@ -100,12 +99,12 @@ async function generateNarration(text, outputPath, duration = null) {
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
-    const { text, addSubtitles, preview } = req.body;
+    const { text, addSubtitles, voice, preview } = req.body;
 
     if (preview) {
       const tempAudioPath = path.join(process.cwd(), 'public', `preview-${Date.now()}.mp3`);
       try {
-        await generateNarration(text, tempAudioPath, 5);
+        await generateNarration(text, tempAudioPath, voice, 5);
         res.status(200).json({ 
           message: 'Prévia de voz gerada!', 
           audioUrl: `/${path.basename(tempAudioPath)}`
@@ -139,7 +138,7 @@ export default async function handler(req, res) {
         fs.writeFileSync(tempImagePath, Buffer.from(imageResponse.data));
         console.log(`Imagem salva: ${tempImagePath}`);
 
-        await generateNarration(sentence, tempAudioPath);
+        await generateNarration(sentence, tempAudioPath, voice);
         console.log(`Áudio gerado: ${tempAudioPath}`);
 
         if (!fs.existsSync(tempImagePath)) throw new Error(`Imagem não encontrada: ${tempImagePath}`);
