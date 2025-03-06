@@ -83,8 +83,9 @@ async function generateNarration(text, outputPath, voiceId, duration = null) {
 
     return new Promise((resolve, reject) => {
       ffmpeg(tempPath)
-        .outputOptions('-c:a mp3')
-        .duration(duration || 9999)
+        .audioCodec('mp3')
+        .outputOptions('-ar 44100') // Frequência de amostragem padrão
+        .outputOptions(duration ? `-t ${duration}` : '') // Cortar só se tiver duração
         .save(outputPath)
         .on('end', () => {
           console.log(`Áudio final gerado: ${outputPath}, tamanho: ${fs.statSync(outputPath).size} bytes`);
@@ -152,10 +153,12 @@ export default async function handler(req, res) {
         await new Promise((resolve, reject) => {
           ffmpeg()
             .input(tempImagePath)
+            .loop(durationPerScene)
             .input(tempAudioPath)
             .videoCodec('libx264')
             .audioCodec('aac')
-            .outputOptions(['-pix_fmt yuv420p', `-t ${durationPerScene}`])
+            .outputOptions('-shortest') // Usa a duração do áudio como base
+            .outputOptions('-pix_fmt yuv420p')
             .outputOptions(addSubtitles ? [
               '-vf',
               `drawtext=text='${sentence.replace(/'/g, "\\'")}':fontcolor=white:fontsize=48:x=(w-tw)/2:y=(h-th)/2`
