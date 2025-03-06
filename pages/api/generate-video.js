@@ -49,13 +49,14 @@ async function fetchImage(query) {
 
     return 'https://via.placeholder.com/1280x720';
   } catch (error) {
-    console.error('Erro ao buscar imagem:', error);
+    console.error('Erro ao buscar imagem:', error.message);
     return 'https://via.placeholder.com/1280x720';
   }
 }
 
 async function generateNarration(text, outputPath, voiceId, duration = null) {
   const apiKey = process.env.ELEVENLABS_API_KEY;
+  console.log('Chamando ElevenLabs API com voz:', voiceId);
 
   try {
     const response = await axios.post(
@@ -63,10 +64,7 @@ async function generateNarration(text, outputPath, voiceId, duration = null) {
       {
         text: text,
         model_id: 'eleven_monolingual_v1',
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.5
-        }
+        voice_settings: { stability: 0.5, similarity_boost: 0.5 }
       },
       {
         headers: {
@@ -84,8 +82,8 @@ async function generateNarration(text, outputPath, voiceId, duration = null) {
     return new Promise((resolve, reject) => {
       ffmpeg(tempPath)
         .audioCodec('mp3')
-        .outputOptions('-ar 44100') // Frequência de amostragem padrão
-        .outputOptions(duration ? `-t ${duration}` : '') // Cortar só se tiver duração
+        .outputOptions('-ar 44100')
+        .outputOptions(duration ? `-t ${duration}` : '')
         .save(outputPath)
         .on('end', () => {
           console.log(`Áudio final gerado: ${outputPath}, tamanho: ${fs.statSync(outputPath).size} bytes`);
@@ -93,7 +91,7 @@ async function generateNarration(text, outputPath, voiceId, duration = null) {
           resolve();
         })
         .on('error', (err) => {
-          console.error('Erro ao converter áudio com FFmpeg:', err);
+          console.error('Erro ao converter áudio com FFmpeg:', err.message);
           reject(err);
         });
     });
@@ -104,6 +102,7 @@ async function generateNarration(text, outputPath, voiceId, duration = null) {
 }
 
 export default async function handler(req, res) {
+  console.log('Requisição recebida:', req.method, req.body);
   if (req.method === 'POST') {
     const { text, addSubtitles, voice, preview } = req.body;
 
@@ -111,6 +110,7 @@ export default async function handler(req, res) {
       const tempAudioPath = path.join(process.cwd(), 'public', `preview-${Date.now()}.mp3`);
       try {
         await generateNarration(text, tempAudioPath, voice, 5);
+        console.log('Prévia gerada com sucesso:', tempAudioPath);
         res.status(200).json({ 
           message: 'Prévia de voz gerada!', 
           audioUrl: `/${path.basename(tempAudioPath)}`
@@ -157,7 +157,7 @@ export default async function handler(req, res) {
             .input(tempAudioPath)
             .videoCodec('libx264')
             .audioCodec('aac')
-            .outputOptions('-shortest') // Usa a duração do áudio como base
+            .outputOptions('-shortest')
             .outputOptions('-pix_fmt yuv420p')
             .outputOptions(addSubtitles ? [
               '-vf',
@@ -169,7 +169,7 @@ export default async function handler(req, res) {
               resolve();
             })
             .on('error', (err) => {
-              console.error(`Erro ao gerar clip ${i+1}:`, err);
+              console.error(`Erro ao gerar clip ${i+1}:`, err.message);
               reject(err);
             });
         });
@@ -204,7 +204,7 @@ export default async function handler(req, res) {
             resolve();
           })
           .on('error', (err) => {
-            console.error('Erro ao concatenar clipes:', err);
+            console.error('Erro ao concatenar clipes:', err.message);
             reject(err);
           });
       });
