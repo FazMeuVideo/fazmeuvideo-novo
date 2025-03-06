@@ -57,44 +57,49 @@ async function fetchImage(query) {
 async function generateNarration(text, outputPath, voiceId, duration = null) {
   const apiKey = process.env.ELEVENLABS_API_KEY;
 
-  const response = await axios.post(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-    {
-      text: text,
-      model_id: 'eleven_monolingual_v1',
-      voice_settings: {
-        stability: 0.5,
-        similarity_boost: 0.5
-      }
-    },
-    {
-      headers: {
-        'xi-api-key': apiKey,
-        'Content-Type': 'application/json'
+  try {
+    const response = await axios.post(
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+      {
+        text: text,
+        model_id: 'eleven_monolingual_v1',
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.5
+        }
       },
-      responseType: 'arraybuffer'
-    }
-  );
+      {
+        headers: {
+          'xi-api-key': apiKey,
+          'Content-Type': 'application/json'
+        },
+        responseType: 'arraybuffer'
+      }
+    );
 
-  const tempPath = outputPath.replace('.mp3', '_temp.mp3');
-  fs.writeFileSync(tempPath, Buffer.from(response.data));
-  console.log(`Áudio temporário gerado: ${tempPath}`);
+    const tempPath = outputPath.replace('.mp3', '_temp.mp3');
+    fs.writeFileSync(tempPath, Buffer.from(response.data));
+    console.log(`Áudio temporário gerado: ${tempPath}, tamanho: ${fs.statSync(tempPath).size} bytes`);
 
-  return new Promise((resolve, reject) => {
-    ffmpeg(tempPath)
-      .outputOptions('-c:a mp3')
-      .duration(duration || 9999)
-      .save(outputPath)
-      .on('end', () => {
-        console.log(`Áudio final gerado: ${outputPath}`);
-        fs.unlinkSync(tempPath);
-        resolve();
-      })
-      .on('error', (err) => {
-        console.error('Erro ao converter áudio com FFmpeg:', err);
-        reject(err);
-      });
-  });
+    return new Promise((resolve, reject) => {
+      ffmpeg(tempPath)
+        .outputOptions('-c:a mp3')
+        .duration(duration || 9999)
+        .save(outputPath)
+        .on('end', () => {
+          console.log(`Áudio final gerado: ${outputPath}, tamanho: ${fs.statSync(outputPath).size} bytes`);
+          fs.unlinkSync(tempPath);
+          resolve();
+        })
+        .on('error', (err) => {
+          console.error('Erro ao converter áudio com FFmpeg:', err);
+          reject(err);
+        });
+    });
+  } catch (error) {
+    console.error('Erro ao chamar ElevenLabs API:', error.message);
+    throw error;
+  }
 }
 
 export default async function handler(req, res) {
@@ -111,7 +116,7 @@ export default async function handler(req, res) {
         });
       } catch (error) {
         console.error('Erro ao gerar prévia:', error);
-        res.status(500).json({ message: 'Erro ao gerar prévia' });
+        res.status(500).json({ message: 'Erro ao gerar prévia: ' + error.message });
       }
       return;
     }
@@ -136,7 +141,7 @@ export default async function handler(req, res) {
         console.log(`Imagem buscada: ${imageUrl}`);
         const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
         fs.writeFileSync(tempImagePath, Buffer.from(imageResponse.data));
-        console.log(`Imagem salva: ${tempImagePath}`);
+        console.log(`Imagem salva: ${tempImagePath}, tamanho: ${fs.statSync(tempImagePath).size} bytes`);
 
         await generateNarration(sentence, tempAudioPath, voice);
         console.log(`Áudio gerado: ${tempAudioPath}`);
@@ -147,7 +152,6 @@ export default async function handler(req, res) {
         await new Promise((resolve, reject) => {
           ffmpeg()
             .input(tempImagePath)
-            .inputOptions(['-framerate 25', '-loop 1'])
             .input(tempAudioPath)
             .videoCodec('libx264')
             .audioCodec('aac')
@@ -158,7 +162,7 @@ export default async function handler(req, res) {
             ] : [])
             .save(tempClipPath)
             .on('end', () => {
-              console.log(`Clip gerado: ${tempClipPath}`);
+              console.log(`Clip gerado: ${tempClipPath}, tamanho: ${fs.statSync(tempClipPath).size} bytes`);
               resolve();
             })
             .on('error', (err) => {
@@ -208,7 +212,7 @@ export default async function handler(req, res) {
       });
     } catch (error) {
       console.error('Erro ao gerar vídeo:', error);
-      res.status(500).json({ message: 'Erro ao gerar vídeo' });
+      res.status(500).json({ message: 'Erro ao gerar vídeo: ' + error.message });
     }
   } else {
     res.status(405).json({ message: 'Método não permitido' });
