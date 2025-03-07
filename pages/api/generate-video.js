@@ -75,26 +75,31 @@ async function generateNarration(text, outputPath, voiceId, duration = null) {
       }
     );
 
-    const tempPath = outputPath.replace('.mp3', '_temp.mp3');
-    fs.writeFileSync(tempPath, Buffer.from(response.data));
-    console.log(`Áudio temporário gerado: ${tempPath}, tamanho: ${fs.statSync(tempPath).size} bytes`);
+    // Salvar o MP3 direto do ElevenLabs
+    fs.writeFileSync(outputPath, Buffer.from(response.data));
+    console.log(`Áudio gerado direto: ${outputPath}, tamanho: ${fs.statSync(outputPath).size} bytes`);
 
-    return new Promise((resolve, reject) => {
-      ffmpeg(tempPath)
-        .audioCodec('mp3')
-        .outputOptions('-ar 44100')
-        .outputOptions(duration ? `-t ${duration}` : '')
-        .save(outputPath)
-        .on('end', () => {
-          console.log(`Áudio final gerado: ${outputPath}, tamanho: ${fs.statSync(outputPath).size} bytes`);
-          fs.unlinkSync(tempPath);
-          resolve();
-        })
-        .on('error', (err) => {
-          console.error('Erro ao converter áudio com FFmpeg:', err.message);
-          reject(err);
-        });
-    });
+    // Se precisar cortar (ex.: prévia de 5s), usa AAC
+    if (duration) {
+      const tempPath = outputPath.replace('.mp3', '_temp.mp3');
+      fs.renameSync(outputPath, tempPath); // Renomeia o original pra temp
+      return new Promise((resolve, reject) => {
+        ffmpeg(tempPath)
+          .audioCodec('aac') // Usa AAC, que é nativo no FFmpeg do Render
+          .outputOptions('-ar 44100')
+          .outputOptions(`-t ${duration}`)
+          .save(outputPath)
+          .on('end', () => {
+            console.log(`Áudio cortado gerado: ${outputPath}, tamanho: ${fs.statSync(outputPath).size} bytes`);
+            fs.unlinkSync(tempPath);
+            resolve();
+          })
+          .on('error', (err) => {
+            console.error('Erro ao cortar áudio com FFmpeg:', err.message);
+            reject(err);
+          });
+      });
+    }
   } catch (error) {
     console.error('Erro ao chamar ElevenLabs API:', error.message);
     throw error;
@@ -156,7 +161,7 @@ export default async function handler(req, res) {
             .loop(durationPerScene)
             .input(tempAudioPath)
             .videoCodec('libx264')
-            .audioCodec('aac')
+            .audioCodec('aac') // Usa AAC pro vídeo também
             .outputOptions('-shortest')
             .outputOptions('-pix_fmt yuv420p')
             .outputOptions(addSubtitles ? [
