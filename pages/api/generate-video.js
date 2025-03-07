@@ -54,7 +54,7 @@ async function fetchImage(query) {
   }
 }
 
-async function generateNarration(text, outputPath, voiceId, duration = null) {
+async function generateNarration(text, outputPath, voiceId) {
   const apiKey = process.env.ELEVENLABS_API_KEY;
   console.log('Chamando ElevenLabs API com voz:', voiceId);
 
@@ -75,31 +75,8 @@ async function generateNarration(text, outputPath, voiceId, duration = null) {
       }
     );
 
-    // Salvar o MP3 direto do ElevenLabs
     fs.writeFileSync(outputPath, Buffer.from(response.data));
-    console.log(`Áudio gerado direto: ${outputPath}, tamanho: ${fs.statSync(outputPath).size} bytes`);
-
-    // Se precisar cortar (ex.: prévia de 5s), usa AAC
-    if (duration) {
-      const tempPath = outputPath.replace('.mp3', '_temp.mp3');
-      fs.renameSync(outputPath, tempPath); // Renomeia o original pra temp
-      return new Promise((resolve, reject) => {
-        ffmpeg(tempPath)
-          .audioCodec('aac') // Usa AAC, que é nativo no FFmpeg do Render
-          .outputOptions('-ar 44100')
-          .outputOptions(`-t ${duration}`)
-          .save(outputPath)
-          .on('end', () => {
-            console.log(`Áudio cortado gerado: ${outputPath}, tamanho: ${fs.statSync(outputPath).size} bytes`);
-            fs.unlinkSync(tempPath);
-            resolve();
-          })
-          .on('error', (err) => {
-            console.error('Erro ao cortar áudio com FFmpeg:', err.message);
-            reject(err);
-          });
-      });
-    }
+    console.log(`Áudio gerado: ${outputPath}, tamanho: ${fs.statSync(outputPath).size} bytes`);
   } catch (error) {
     console.error('Erro ao chamar ElevenLabs API:', error.message);
     throw error;
@@ -114,7 +91,7 @@ export default async function handler(req, res) {
     if (preview) {
       const tempAudioPath = path.join(process.cwd(), 'public', `preview-${Date.now()}.mp3`);
       try {
-        await generateNarration(text, tempAudioPath, voice, 5);
+        await generateNarration(text, tempAudioPath, voice);
         console.log('Prévia gerada com sucesso:', tempAudioPath);
         res.status(200).json({ 
           message: 'Prévia de voz gerada!', 
@@ -156,18 +133,19 @@ export default async function handler(req, res) {
         if (!fs.existsSync(tempAudioPath)) throw new Error(`Áudio não encontrado: ${tempAudioPath}`);
 
         await new Promise((resolve, reject) => {
-          ffmpeg()
+          const command = ffmpeg()
             .input(tempImagePath)
-            .loop(durationPerScene)
+            .inputOptions(['-framerate 25'])
             .input(tempAudioPath)
             .videoCodec('libx264')
-            .audioCodec('aac') // Usa AAC pro vídeo também
-            .outputOptions('-shortest')
-            .outputOptions('-pix_fmt yuv420p')
+            .audioCodec('aac')
+            .outputOptions(['-pix_fmt yuv420p', '-shortest'])
             .outputOptions(addSubtitles ? [
               '-vf',
-              `drawtext=text='${sentence.replace(/'/g, "\\'")}':fontcolor=white:fontsize=48:x=(w-tw)/2:y=(h-th)/2`
-            ] : [])
+              `drawtext=text='${sentence.replace(/'/g, "\\'")}':fontcolor=white:fontsize=24:box=1:boxcolor=black@0.5:x=(w-tw)/2:y=h-th-10`
+            ] : []);
+
+          command
             .save(tempClipPath)
             .on('end', () => {
               console.log(`Clip gerado: ${tempClipPath}, tamanho: ${fs.statSync(tempClipPath).size} bytes`);
