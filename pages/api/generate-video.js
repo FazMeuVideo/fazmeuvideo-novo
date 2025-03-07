@@ -95,7 +95,7 @@ export default async function handler(req, res) {
         console.log('Prévia gerada com sucesso:', tempAudioPath);
         res.status(200).json({ 
           message: 'Prévia de voz gerada!', 
-          audioUrl: `/${path.basename(tempAudioPath)}`
+          audioUrl: `/api/download-video?filename=${path.basename(tempAudioPath)}`
         });
       } catch (error) {
         console.error('Erro ao gerar prévia:', error);
@@ -164,7 +164,7 @@ export default async function handler(req, res) {
 
       const outputFileName = `video-${Date.now()}.mp4`;
       const outputPath = path.join(process.cwd(), 'public', outputFileName);
-      const videoUrl = `/${outputFileName}`;
+      const videoUrl = `/api/download-video?filename=${outputFileName}`;
       const concatListPath = path.join(process.cwd(), 'public', `concat-${Date.now()}.txt`);
 
       const concatList = tempClips.map(clip => `file '${clip.replace(/\\/g, '/')}'`).join('\n');

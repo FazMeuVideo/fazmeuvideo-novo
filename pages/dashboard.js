@@ -32,6 +32,7 @@ export default function Dashboard({ session }) {
 
   const handlePreview = async () => {
     setLoadingPreview(true);
+    setAudioUrl(''); // Limpa o áudio anterior
     try {
       const response = await fetch('/api/generate-video', {
         method: 'POST',
@@ -40,7 +41,7 @@ export default function Dashboard({ session }) {
       });
       const data = await response.json();
       if (response.ok) {
-        setAudioUrl(data.audioUrl);
+        setAudioUrl(data.audioUrl); // URL como /api/download-video?filename=preview-xxx.mp3
       } else {
         throw new Error(data.message);
       }
@@ -53,6 +54,7 @@ export default function Dashboard({ session }) {
   const handleGenerate = async () => {
     setLoadingVideo(true);
     setProgress(0);
+    setVideoUrl(''); // Limpa o vídeo anterior
     try {
       const response = await fetch('/api/generate-video', {
         method: 'POST',
@@ -61,7 +63,7 @@ export default function Dashboard({ session }) {
       });
       const data = await response.json();
       if (response.ok) {
-        setVideoUrl(data.videoUrl);
+        setVideoUrl(data.videoUrl); // URL como /api/download-video?filename=video-xxx.mp4
         setVideoHistory(prev => [...prev, { url: data.videoUrl, date: new Date().toLocaleString() }]);
       } else {
         throw new Error(data.message);
@@ -173,14 +175,26 @@ export default function Dashboard({ session }) {
           {audioUrl && (
             <div className="mt-6">
               <h3 className="text-lg font-semibold text-gray-700">Prévia da voz escolhida:</h3>
-              <audio controls src={audioUrl} className="mt-2 w-full" />
+              <audio controls src={audioUrl} className="mt-2 w-full">
+                Seu navegador não suporta o elemento de áudio.
+              </audio>
             </div>
           )}
           {videoUrl && (
             <div className="mt-10">
               <h3 className="text-2xl font-semibold text-green-600">Seu vídeo está pronto!</h3>
               <div className="mt-6 bg-gradient-to-r from-gray-100 to-gray-200 p-6 rounded-xl shadow-md">
-                <p className="text-gray-700 text-lg">Clique para baixar: <a href={videoUrl} className="text-blue-500 underline hover:text-blue-700 transition duration-300">{videoUrl}</a></p>
+                <p className="text-gray-700 text-lg">
+                  Clique para baixar ou assistir:
+                </p>
+                <a
+                  href={videoUrl}
+                  download={`video-${Date.now()}.mp4`}
+                  className="text-blue-500 underline hover:text-blue-700 transition duration-300"
+                >
+                  Baixar Vídeo
+                </a>
+                <video controls src={videoUrl} className="mt-4 w-full max-w-md mx-auto" />
               </div>
             </div>
           )}
@@ -191,7 +205,13 @@ export default function Dashboard({ session }) {
                 {videoHistory.map((video, index) => (
                   <li key={index} className="bg-gray-100 p-4 rounded-lg shadow-md">
                     <p className="text-gray-700">Gerado em: {video.date}</p>
-                    <a href={video.url} className="text-blue-500 underline hover:text-blue-700">Baixar vídeo</a>
+                    <a
+                      href={video.url}
+                      download={`video-${index}-${Date.now()}.mp4`}
+                      className="text-blue-500 underline hover:text-blue-700"
+                    >
+                      Baixar vídeo
+                    </a>
                   </li>
                 ))}
               </ul>
