@@ -63,8 +63,9 @@ async function generateNarration(text, outputPath, voiceId) {
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
       {
         text: text,
-        model_id: 'eleven_monolingual_v1',
-        voice_settings: { stability: 0.5, similarity_boost: 0.5 }
+        model_id: 'eleven_multilingual_v2', // Modelo multilíngue pra pt-BR
+        voice_settings: { stability: 0.5, similarity_boost: 0.5 },
+        language: 'pt-BR' // Forçar português brasileiro
       },
       {
         headers: {
@@ -107,7 +108,6 @@ export default async function handler(req, res) {
     const sentences = text.split('.').filter(s => s.trim());
     const tempFiles = [];
     const tempClips = [];
-    const durationPerScene = 15;
 
     try {
       for (let i = 0; i < sentences.length; i++) {
@@ -118,9 +118,8 @@ export default async function handler(req, res) {
 
         console.log(`Gerando cena ${i+1}: ${sentence}`);
 
-        const keywords = sentence.split(' ').filter(w => w.length > 3);
-        const query = keywords[0] || sentence.split(' ')[0];
-        const imageUrl = await fetchImage(query);
+        // Usar o texto completo como query pra buscar imagens mais precisas
+        const imageUrl = await fetchImage(sentence.split(',')[0].trim());
         console.log(`Imagem buscada: ${imageUrl}`);
         const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
         fs.writeFileSync(tempImagePath, Buffer.from(imageResponse.data));
@@ -135,11 +134,15 @@ export default async function handler(req, res) {
         await new Promise((resolve, reject) => {
           const command = ffmpeg()
             .input(tempImagePath)
-            .inputOptions(['-framerate 25'])
+            .loop(null) // Loop até o áudio acabar
             .input(tempAudioPath)
             .videoCodec('libx264')
             .audioCodec('aac')
-            .outputOptions(['-pix_fmt yuv420p', '-shortest'])
+            .outputOptions([
+              '-pix_fmt yuv420p',
+              '-shortest', // Duração baseada no áudio
+              '-r 25' // 25 fps pra garantir vídeo suave
+            ])
             .outputOptions(addSubtitles ? [
               '-vf',
               `drawtext=text='${sentence.replace(/'/g, "\\'")}':fontcolor=white:fontsize=24:box=1:boxcolor=black@0.5:x=(w-tw)/2:y=h-th-10`
